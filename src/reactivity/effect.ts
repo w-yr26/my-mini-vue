@@ -1,6 +1,6 @@
 class ReactiveEffect {
   private _fn: any
-  constructor(fn) {
+  constructor(fn, public scheduler?) {
     this._fn = fn
   }
 
@@ -14,10 +14,12 @@ class ReactiveEffect {
 
 let activeEffect
 // effect 的作用就相当于watchFn，通过执行一次fn，触发对应的响应式数据的getter，从而进行依赖的收集ß
-export function effect(fn) {
-  const _effect = new ReactiveEffect(fn)
+export function effect(fn, options: any = {}) {
+  const { scheduler } = options
+  const _effect = new ReactiveEffect(fn, scheduler)
   _effect.run()
 
+  // return出去一个runner函数
   // run()内部实现存在一个this的指向问题，所以要是有bind
   return _effect.run.bind(_effect)
 }
@@ -44,6 +46,10 @@ export function trigger(target, key) {
   let depsMap = targetMap.get(target)
   let dep = depsMap.get(key)
   for (const effect of dep) {
-    effect.run()
+    if (effect.scheduler) {
+      effect.scheduler()
+    } else {
+      effect.run()
+    }
   }
 }

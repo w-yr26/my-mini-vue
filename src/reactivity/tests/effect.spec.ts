@@ -32,4 +32,40 @@ describe("effect", () => {
     expect(foo).toBe(12)
     expect(r).toBe("foo")
   })
+
+  // scheduler测试
+  it("scheduler", () => {
+    let dummy;
+    let run: any;
+    // scheduler此处只是一个伪函数，仅用来测试执行次数，和响应式数据更新并无关系
+    const scheduler = jest.fn(() => {
+      // run = runner;
+      console.log('scheduler exe');
+
+    });
+
+    const obj = reactive({ foo: 1 });
+
+    const runner = effect(
+      () => {
+        dummy = obj.foo;
+      },
+      { scheduler }
+    );
+
+    run = runner
+
+    // 第一次执行传入的fn而非scheduler
+    expect(scheduler).not.toHaveBeenCalled();
+    expect(dummy).toBe(1);
+    // 此后响应式数据更新应该执行scheduler
+    obj.foo++;
+    expect(scheduler).toHaveBeenCalledTimes(1);
+    // 传入的fn此后不会执行，所以dummy还是1
+    expect(dummy).toBe(1);
+    // 执行run() -> 也就是执行runner()
+    run();
+    // 响应式数据更新
+    expect(dummy).toBe(2);
+  });
 })
