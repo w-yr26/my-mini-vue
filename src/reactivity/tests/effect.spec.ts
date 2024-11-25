@@ -1,5 +1,5 @@
 import { effect, stop } from '../effect';
-import { reactive } from '../reactive'
+import { reactive, readonly } from '../reactive'
 
 describe("effect", () => {
   it("happy path", () => {
@@ -107,5 +107,17 @@ describe("effect", () => {
     )
      stop(runner)
      expect(onStop).toHaveBeenCalledTimes(1)
+  })
+
+  it("readonly", () => {
+    console.warn = jest.fn()
+    
+    const obj = readonly({
+      age: 20
+    })
+
+    obj.age = 21
+
+    expect(console.warn).toHaveBeenCalledTimes(1)
   })
 })
