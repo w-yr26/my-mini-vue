@@ -1,5 +1,6 @@
 class ReactiveEffect {
   private _fn: any
+  deps = []
   constructor(fn, public scheduler?) {
     this._fn = fn
   }
@@ -9,6 +10,12 @@ class ReactiveEffect {
     // 返回函数执行的结果
     const res = this._fn()
     return res
+  }
+
+  stop() {
+    this.deps.forEach((dep: any) => {
+      dep.delete(this)
+    })
   }
 }
 
@@ -21,7 +28,9 @@ export function effect(fn, options: any = {}) {
 
   // return出去一个runner函数
   // run()内部实现存在一个this的指向问题，所以要是有bind
-  return _effect.run.bind(_effect)
+  const runner: any = _effect.run.bind(_effect)
+  runner.effect = _effect
+  return runner
 }
 
 const targetMap = new Map()
@@ -39,6 +48,8 @@ export function track(target, key) {
   }
 
   dep.add(activeEffect)
+  // activeEffect -> 当前的effect实例
+  activeEffect.deps.push(dep)
 }
 
 // 依赖的执行
@@ -52,4 +63,8 @@ export function trigger(target, key) {
       effect.run()
     }
   }
+}
+
+export function stop(runner: any) {
+  runner.effect.stop()
 }
