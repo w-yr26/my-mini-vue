@@ -70,18 +70,22 @@ describe("effect", () => {
   });
 
   it("stop", () => {
-    let dummy;
+    let dummy, dummy2;
     const obj = reactive({ prop: 1 });
     const runner = effect(() => {
       dummy = obj.prop;
     });
+    const runner2 = effect(() => {
+      dummy2 = obj.prop
+    })
     obj.prop = 2;
     expect(dummy).toBe(2);
     stop(runner);
     obj.prop = 3
     // obj.prop++;
     expect(dummy).toBe(2);
-
+    // runner2并没有执行stop()，所以dummy2可以正常更新
+    expect(dummy2).toBe(3)
     // stopped effect should still be manually callable
     runner();
     expect(dummy).toBe(3);

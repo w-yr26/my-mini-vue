@@ -1,6 +1,7 @@
 class ReactiveEffect {
   private _fn: any
   deps = []
+  active = true
   constructor(fn, public scheduler?) {
     this._fn = fn
   }
@@ -13,9 +14,13 @@ class ReactiveEffect {
   }
 
   stop() {
-    this.deps.forEach((dep: any) => {
-      dep.delete(this)
-    })
+    // 清除过一次之后，后续再执行时已经被清除
+    if(this.active){
+      this.deps.forEach((dep: any) => {
+        dep.delete(this)
+      })
+      this.active = false
+    }
   }
 }
 
