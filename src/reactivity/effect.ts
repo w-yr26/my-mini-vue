@@ -1,6 +1,7 @@
 class ReactiveEffect {
   private _fn: any
   deps = []
+  onStop?: () => void
   active = true
   constructor(fn, public scheduler?) {
     this._fn = fn
@@ -19,6 +20,7 @@ class ReactiveEffect {
       this.deps.forEach((dep: any) => {
         dep.delete(this)
       })
+      this.onStop && this.onStop()
       this.active = false
     }
   }
@@ -29,6 +31,9 @@ let activeEffect
 export function effect(fn, options: any = {}) {
   const { scheduler } = options
   const _effect = new ReactiveEffect(fn, scheduler)
+  // _effect.onStop = onStop
+  // 后续可能还要从options中获取其他东西挂载到_effect身上，所以可以适用Object.assign
+  Object.assign(_effect, options)
   _effect.run()
 
   // return出去一个runner函数
@@ -51,6 +56,8 @@ export function track(target, key) {
     dep = new Set()
     depsMap.set(key, dep)
   }
+
+  if(!activeEffect) return
 
   dep.add(activeEffect)
   // activeEffect -> 当前的effect实例
