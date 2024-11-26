@@ -2,6 +2,10 @@ import { track, trigger } from './effect'
 
 function createGetter(isReadOnly = false) {
   return function get(target, key) {
+    // 判断是否为isReactive -> 如果访问的是ReactiveFlags.IS_REACTIVE属性，说明是在测试 isReactive
+    if (key === ReactiveFlags.IS_REACTIVE) return !isReadOnly
+    else if (key === ReactiveFlags.IS_READONLY) return isReadOnly
+
     const res = Reflect.get(target, key)
     // 依赖的收集(非readonly时才执行)
     !isReadOnly && track(target, key)
@@ -47,4 +51,18 @@ export function reactive(raw) {
 // 只读，不需要进行依赖的收集，也不能执行setter
 export function readonly(raw) {
   return new Proxy(raw, readonlyHandlers)
+}
+
+const enum ReactiveFlags {
+  IS_REACTIVE = "__v_isReactive",
+  IS_READONLY = "__v_isReadonly"
+}
+
+// 判断是否为响应式对象 -> 让value访问某个对象，从而触发Proxy的getter操作，在getter操作内，通过createGetter的isReadOnly字段判断是否为isReactive/是否为isReadOnly
+export function isReactive(value) {
+  return !!value[ReactiveFlags.IS_REACTIVE]
+}
+
+export function isReadOnly(value) {
+  return !!value[ReactiveFlags.IS_READONLY]
 }

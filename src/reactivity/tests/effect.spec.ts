@@ -1,5 +1,5 @@
 import { effect, stop } from '../effect';
-import { reactive, readonly } from '../reactive'
+import { isReactive, isReadOnly, reactive, readonly } from '../reactive'
 
 describe("effect", () => {
   it("happy path", () => {
@@ -119,5 +119,21 @@ describe("effect", () => {
     obj.age = 21
 
     expect(console.warn).toHaveBeenCalledTimes(1)
+  })
+
+  it("isReactive", () => {
+    const origin = { foo: 1 }
+    const obj = reactive(origin)
+    expect(origin).not.toBe(obj)
+    expect(isReactive(obj)).toBe(true)
+    expect(isReactive(origin)).toBe(false)
+  })
+
+  it("isReadonly", () => {
+    const origin = { foo: 1 }
+    const obj = readonly(origin)
+    expect(origin).not.toBe(obj)
+    expect(isReadOnly(obj)).toBe(true)
+    expect(isReadOnly(origin)).toBe(false)
   })
 })
