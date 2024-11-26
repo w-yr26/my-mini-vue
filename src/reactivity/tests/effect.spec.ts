@@ -1,5 +1,5 @@
 import { effect, stop } from '../effect';
-import { isReactive, isReadOnly, reactive, readonly } from '../reactive'
+import { isProxy, isReactive, isReadOnly, reactive, readonly } from '../reactive'
 
 describe("effect", () => {
   it("happy path", () => {
@@ -126,7 +126,9 @@ describe("effect", () => {
     const obj = reactive(origin)
     expect(origin).not.toBe(obj)
     expect(isReactive(obj)).toBe(true)
+    expect(isProxy(obj)).toBe(true)
     expect(isReactive(origin)).toBe(false)
+    expect(isProxy(origin)).toBe(false)
   })
 
   it("isReadonly", () => {
@@ -134,7 +136,9 @@ describe("effect", () => {
     const obj = readonly(origin)
     expect(origin).not.toBe(obj)
     expect(isReadOnly(obj)).toBe(true)
+    expect(isProxy(obj)).toBe(true)
     expect(isReadOnly(origin)).toBe(false)
+    expect(isProxy(origin)).toBe(false)
   })
 
   it("another stop", () => {
