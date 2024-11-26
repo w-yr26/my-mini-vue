@@ -136,4 +136,29 @@ describe("effect", () => {
     expect(isReadOnly(obj)).toBe(true)
     expect(isReadOnly(origin)).toBe(false)
   })
+
+  it("another stop", () => {
+    let dummy, dummy2;
+    const obj = reactive({ prop: 1 });
+    const runner = effect(() => {
+      dummy = obj.prop;
+    });
+    const runner2 = effect(() => {
+      dummy2 = obj.prop
+    })
+    obj.prop = 2;
+    expect(dummy).toBe(2);
+    expect(dummy2).toBe(2);
+    stop(runner);
+    // obj.prop = 3
+    // obj.prop = obj.prop + 1
+    // 执行++之后，会首先执行getter、再执行setter；而在getter中，又执行了track -> 又执行了activeEffect.deps.push(dep) -> 所以前面刚stop移除完，对应的dep又加回来了
+    // 最终在setter的时候，遍历每个dep执行对应的回调，在这里反映为执行dummy = obj.prop，所以dummy最终应该为3
+    obj.prop++;
+    expect(dummy).toBe(2);
+    expect(dummy2).toBe(3);
+    // stopped effect should still be manually callable
+    // runner();
+    // expect(dummy).toBe(3);
+  });
 })

@@ -1,3 +1,5 @@
+let activeEffect
+let shouldTrack = false
 class ReactiveEffect {
   private _fn: any
   deps = []
@@ -8,9 +10,16 @@ class ReactiveEffect {
   }
 
   run() {
+    if (!this.active) {
+      return this._fn()
+    }
+
+    shouldTrack = true
     activeEffect = this
     // 返回函数执行的结果
     const res = this._fn()
+    // 重置状态
+    shouldTrack = false
     return res
   }
 
@@ -20,13 +29,14 @@ class ReactiveEffect {
       this.deps.forEach((dep: any) => {
         dep.delete(this)
       })
+      // 此时this.deps内所收集的dep已经和自身无关，所以可以直接置空
+      this.deps.length = 0
       this.onStop && this.onStop()
       this.active = false
     }
   }
 }
 
-let activeEffect
 // effect 的作用就相当于watchFn，通过执行一次fn，触发对应的响应式数据的getter，从而进行依赖的收集ß
 export function effect(fn, options: any = {}) {
   const { scheduler } = options
@@ -46,6 +56,9 @@ export function effect(fn, options: any = {}) {
 const targetMap = new Map()
 // 收集依赖
 export function track(target, key) {
+  if (!activeEffect) return
+  if (!shouldTrack) return
+
   let depsMap = targetMap.get(target)
   if (!depsMap) {
     depsMap = new Map()
@@ -57,7 +70,6 @@ export function track(target, key) {
     depsMap.set(key, dep)
   }
 
-  if(!activeEffect) return
 
   dep.add(activeEffect)
   // activeEffect -> 当前的effect实例
