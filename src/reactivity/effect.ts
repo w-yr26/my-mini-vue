@@ -56,8 +56,7 @@ export function effect(fn, options: any = {}) {
 const targetMap = new Map()
 // 收集依赖
 export function track(target, key) {
-  if (!activeEffect) return
-  if (!shouldTrack) return
+  if(!isTracking()) return
 
   let depsMap = targetMap.get(target)
   if (!depsMap) {
@@ -70,16 +69,28 @@ export function track(target, key) {
     depsMap.set(key, dep)
   }
 
+  trackEffects(dep)
+}
 
+export function trackEffects(dep){
   dep.add(activeEffect)
   // activeEffect -> 当前的effect实例
   activeEffect.deps.push(dep)
+}
+
+// 依赖收集前，activeEffect!==undefined && 未执行stop()
+export function isTracking(){
+  return activeEffect !== undefined && shouldTrack
 }
 
 // 依赖的执行
 export function trigger(target, key) {
   let depsMap = targetMap.get(target)
   let dep = depsMap.get(key)
+  triggerEffects(dep)
+}
+
+export function triggerEffects(dep){
   for (const effect of dep) {
     if (effect.scheduler) {
       effect.scheduler()

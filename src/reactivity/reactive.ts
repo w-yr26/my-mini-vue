@@ -1,3 +1,4 @@
+import { isObject } from '../utils'
 import { track, trigger } from './effect'
 
 function createGetter(isReadOnly = false, shallow = false) {
@@ -12,7 +13,7 @@ function createGetter(isReadOnly = false, shallow = false) {
     if (shallow) return res
 
     // 如果是内层嵌套，递归处理成reactive/readonly
-    if (res !== null && typeof res === 'object') {
+    if (isObject(res)) {
       return isReadOnly ? readonly(res) : reactive(res)
     }
 
