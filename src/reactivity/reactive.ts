@@ -7,6 +7,12 @@ function createGetter(isReadOnly = false) {
     else if (key === ReactiveFlags.IS_READONLY) return isReadOnly
 
     const res = Reflect.get(target, key)
+
+    // 如果是内层嵌套，递归处理成reactive/readonly
+    if (res !== null && typeof res === 'object') {
+      return isReadOnly ? readonly(res) : reactive(res)
+    }
+
     // 依赖的收集(非readonly时才执行)
     !isReadOnly && track(target, key)
     return res

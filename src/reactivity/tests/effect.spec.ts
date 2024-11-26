@@ -161,4 +161,17 @@ describe("effect", () => {
     // runner();
     // expect(dummy).toBe(3);
   });
+
+  it("deep reactive", () => {
+    const origin = {
+      nested: {
+        foo: 1
+      },
+      array: [{ bar: 2 }]
+    }
+    const observed = reactive(origin)
+    expect(isReactive(observed.nested)).toBe(true)
+    expect(isReactive(observed.array)).toBe(true)
+    expect(isReactive(observed.array[0])).toBe(true)
+  })
 })
