@@ -1,12 +1,15 @@
 import { track, trigger } from './effect'
 
-function createGetter(isReadOnly = false) {
+function createGetter(isReadOnly = false, shallow = false) {
   return function get(target, key) {
     // 判断是否为isReactive -> 如果访问的是ReactiveFlags.IS_REACTIVE属性，说明是在测试 isReactive
     if (key === ReactiveFlags.IS_REACTIVE) return !isReadOnly
     else if (key === ReactiveFlags.IS_READONLY) return isReadOnly
 
     const res = Reflect.get(target, key)
+
+    // 如果是shallowReadonly，直接返回结果(因为不需要对嵌套的数据进行处理)
+    if (shallow) return res
 
     // 如果是内层嵌套，递归处理成reactive/readonly
     if (res !== null && typeof res === 'object') {
@@ -30,6 +33,7 @@ function createSetter(){
 const get = createGetter()
 const set = createSetter()
 const readonlyGet = createGetter(true)
+const shallowReadonlyGet = createGetter(true, true)
 
 const mutableHandlers = {
   get,
@@ -50,6 +54,14 @@ const readonlyHandlers = {
   }
 }
 
+const shallowReadonlyHandlers = {
+  get: shallowReadonlyGet,
+  set(target, key, value) {
+    console.warn(key, `failed to set, because the ${target} is readonly`)
+    return true
+  }
+}
+
 export function reactive(raw) {
   return new Proxy(raw, mutableHandlers)
 }
@@ -57,6 +69,11 @@ export function reactive(raw) {
 // 只读，不需要进行依赖的收集，也不能执行setter
 export function readonly(raw) {
   return new Proxy(raw, readonlyHandlers)
+}
+
+// 只对第一层做readonly处理
+export function shallowReadonly(raw) {
+  return new Proxy(raw, shallowReadonlyHandlers)
 }
 
 const enum ReactiveFlags {
