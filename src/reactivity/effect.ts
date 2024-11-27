@@ -1,6 +1,6 @@
 let activeEffect
 let shouldTrack = false
-class ReactiveEffect {
+export class ReactiveEffect {
   private _fn: any
   deps = []
   onStop?: () => void
