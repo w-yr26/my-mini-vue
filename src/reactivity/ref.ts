@@ -46,3 +46,26 @@ export function isRef(ref) {
 export function unRef(ref) {
   return isRef(ref) ? ref.value : ref
 }
+
+// 对ref进行剥离，可以不通过.value进行访问
+export function proxyRefs(objectWithRefs) {
+  return new Proxy(objectWithRefs, {
+    get(target, key) {
+      return unRef(Reflect.get(target, key))
+    },
+    set(target, key, newValue) {
+      const oldValue = target[key]
+      if (isRef(oldValue) && !isRef(newValue)) {
+        return (target[key].value = newValue)
+        // 使用target[key]的形式而不是Reflect.set的形式的原因：
+        // 这个分支对应target[key]为ref而newValue不是ref的情况，实际值存在.value中
+        // newValue仅更新ref.value；如果使用Reflect.set，原先的target[key]就不再是ref而是一个普通值
+        // 后续原对象再通过.value访问属性值就会报错
+        // 总结来说，就是要保留ref本身，仅修改内部的.value
+        // return Reflect.set(target, key, newValue)
+      } else {
+        return Reflect.set(target, key, newValue)
+      }
+    }
+  })
+}

@@ -1,6 +1,6 @@
 import { effect } from "../effect";
 import { reactive } from "../reactive";
-import { isRef, ref, unRef } from "../ref";
+import { isRef, proxyRefs, ref, unRef } from "../ref";
 
 describe("ref", () => {
   it("should be reactive", () => {
@@ -49,5 +49,25 @@ describe("ref", () => {
     const a = ref(1)
     expect(unRef(a)).toBe(1)
     expect(unRef(10)).toBe(10)
+  })
+
+  it("proxyRef", () => {
+    const user = {
+      age: ref(10),
+      name: "xiaohong",
+    };
+    const proxyUser = proxyRefs(user);
+    expect(user.age.value).toBe(10);
+    expect(proxyUser.age).toBe(10);
+    expect(proxyUser.name).toBe("xiaohong");
+
+    // 如果赋值一个新的ref -> 直接替换
+    proxyUser.age = ref(10);
+    expect(proxyUser.age).toBe(10);
+    expect(user.age.value).toBe(10);
+    // 如果赋值一个新的值 -> 替换原先的值
+    (proxyUser as any).age = 20;
+    expect(proxyUser.age).toBe(20);
+    expect(user.age.value).toBe(20);
   })
 });
