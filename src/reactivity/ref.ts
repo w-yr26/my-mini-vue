@@ -6,6 +6,7 @@ class RefImpl {
   private _value: any
   private _rawValue: any
   private dep
+  public __v_isRef = true
   constructor(value) {
     // _rawValue保留着未处理之前的数据(reactive处理的数据已变成Proxy对象)，用于后续比对是否前后一致
     this._rawValue = value
@@ -34,4 +35,14 @@ class RefImpl {
 
 export function ref(value) {
   return new RefImpl(value)
+}
+
+// 判断传入的数据是不是一个ref
+export function isRef(ref) {
+  return !!ref.__v_isRef
+}
+
+// isRef ? return ref.value : return 本身
+export function unRef(ref) {
+  return isRef(ref) ? ref.value : ref
 }
