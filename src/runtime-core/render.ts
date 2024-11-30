@@ -28,5 +28,5 @@ function mountComponent(vnode, rootContainer) {
 function setupRenderEffect(instance, rootContainer) {
   // 组件实例的render属性挂载着组件内的render()，而组件内的render()返回一个h()，h()是用来创建虚拟节点的，但此时创建的虚拟节点的type类型就不再是Component，而是element，所以要再次调用render()进行element的渲染
   const subTree = instance.render()
-  render(subTree, rootContainer)
+  patch(subTree, rootContainer)
 }

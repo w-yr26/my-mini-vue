@@ -1,3 +1,4 @@
+import { h } from '../../lib/mini-vue.es.js'
 export const App = {
   render() {
     // ui
