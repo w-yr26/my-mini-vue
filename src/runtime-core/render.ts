@@ -68,7 +68,8 @@ function mountComponent(vnode, container) {
 }
 
 function setupRenderEffect(instance, container) {
-  // 组件实例的render属性挂载着组件内的render()，而组件内的render()返回一个h()，h()是用来创建虚拟节点的，但此时创建的虚拟节点的type类型就不再是Component，而是element，所以要再次调用render()进行element的渲染
-  const subTree = instance.render()
+  const { proxy } = instance
+  // 组件实例的render属性挂载着组件内的render()，而组件内的render()返回一个h()，h()是用来创建虚拟节点的，再度判断type的类型从而判断执行processComponent or processElement -> 开箱操作
+  const subTree = instance.render.call(proxy)
   patch(subTree, container)
 }

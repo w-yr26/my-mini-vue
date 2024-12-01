@@ -11,15 +11,16 @@ export const App = {
       // children -> string
       // 'hi mini-vue'
       // children -> Array
-      [
-        h('p', { class: 'red' }, 'hello'),
-        h('p', { class: 'green' }, 'mini-vue'),
-      ]
+      // [
+      //   h('p', { class: 'red' }, 'hello'),
+      //   h('p', { class: 'green' }, 'mini-vue'),
+      // ]
+      'hi ' + this.msg
     )
   },
   setup() {
     return {
-      msg: 'mini-vue',
+      msg: 'mini-vue-hahaha',
     }
   },
 }

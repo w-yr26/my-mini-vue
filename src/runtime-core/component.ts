@@ -12,6 +12,7 @@ export function createComponentInstance(vnode) {
   const component = {
     vnode,
     type: vnode.type,
+    setupState: {},
   }
 
   return component
@@ -31,6 +32,19 @@ function setupStatefulComponent(instance) {
   // 前面已经将 组件 挂载到组件实例instance的type属性身上
   // vnode.type是组件本身，而 instance.type = vnode.type
   const Component = instance.type
+
+  instance.proxy = new Proxy(
+    {},
+    {
+      get(target, key) {
+        const { setupState } = instance
+        if (key in setupState) {
+          return setupState[key]
+        }
+      },
+    }
+  )
+
   const { setup } = Component
   // 用户使用vue时，不一定会传入setup
   if (setup) {
