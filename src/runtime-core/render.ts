@@ -1,4 +1,5 @@
 import { isObject } from '../shared/index'
+import { ShapeFlags } from '../shared/shapeFlags'
 import { createComponentInstance, setupComponent } from './component'
 
 export function render(vnode, container) {
@@ -8,11 +9,11 @@ export function render(vnode, container) {
 function patch(vnode, container) {
   // 通过type判断是去处理 Component 类型 or element 类型
   // 如果是组件，vnode.type是组件对象
-
-  if (typeof vnode.type === 'string') {
+  const { shapeFlag } = vnode
+  if (shapeFlag & ShapeFlags.ELEMENT) {
     // 渲染element类型
     processElement(vnode, container)
-  } else if (isObject(vnode.type)) {
+  } else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
     // 渲染组件类型
     processComponent(vnode, container)
   }
@@ -34,11 +35,11 @@ function processElement(vnode, container) {
   //  创建节点
   const el = document.createElement(vnode.type)
   // children -> string or Array
-  const { children } = vnode
-  if (typeof children === 'string') {
+  const { children, shapeFlag } = vnode
+  if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
     // string类型，直接设置内容
     el.textContent = children
-  } else if (Array.isArray(children)) {
+  } else if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
     // Array类型，递归调用patch -> 进入patch后，再度判断是渲染Component or element
     children.forEach((v) => {
       patch(v, el)
