@@ -10,6 +10,9 @@ export const App = {
       {
         class: 'container',
         id: 'app',
+        onClick() {
+          console.log('click')
+        },
       },
       // children -> string
       // 'hi mini-vue'
