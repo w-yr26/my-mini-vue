@@ -33,7 +33,7 @@ function patch(vnode, container) {
  */
 function processElement(vnode, container) {
   //  创建节点
-  const el = document.createElement(vnode.type)
+  const el = (vnode.el = document.createElement(vnode.type))
   // children -> string or Array
   const { children, shapeFlag } = vnode
   if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
@@ -65,12 +65,18 @@ function mountComponent(vnode, container) {
   // 处理setup部分
   setupComponent(instance)
   // 处理render
-  setupRenderEffect(instance, container)
+  setupRenderEffect(instance, vnode, container)
 }
 
-function setupRenderEffect(instance, container) {
+function setupRenderEffect(instance, vnode, container) {
   const { proxy } = instance
   // 组件实例的render属性挂载着组件内的render()，而组件内的render()返回一个h()，h()是用来创建虚拟节点的，再度判断type的类型从而判断执行processComponent or processElement -> 开箱操作
+  // subTree是根element返回的虚拟DOM结构，在它身上的el属性才是有值的
   const subTree = instance.render.call(proxy)
+  // console.log('subTree', subTree)
+
   patch(subTree, container)
+
+  // 等element patch完毕之后，再把它的vnode.el挂载到根组件的el身上
+  vnode.el = subTree.el
 }

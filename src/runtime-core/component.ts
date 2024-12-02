@@ -7,6 +7,8 @@
  * }
  */
 
+import { componentPublicInstance } from './componentPublicInstance'
+
 // 创建组件实例对象，挂载一些后续操作需要使用的东西
 export function createComponentInstance(vnode) {
   const component = {
@@ -33,17 +35,7 @@ function setupStatefulComponent(instance) {
   // vnode.type是组件本身，而 instance.type = vnode.type
   const Component = instance.type
 
-  instance.proxy = new Proxy(
-    {},
-    {
-      get(target, key) {
-        const { setupState } = instance
-        if (key in setupState) {
-          return setupState[key]
-        }
-      },
-    }
-  )
+  instance.proxy = new Proxy({ _: instance }, componentPublicInstance)
 
   const { setup } = Component
   // 用户使用vue时，不一定会传入setup
