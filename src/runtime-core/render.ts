@@ -39,7 +39,7 @@ function processElement(vnode, container) {
   if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
     // string类型，直接设置内容
     el.textContent = children
-  } else if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+  } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
     // Array类型，递归调用patch -> 进入patch后，再度判断是渲染Component or element
     children.forEach((v) => {
       patch(v, el)

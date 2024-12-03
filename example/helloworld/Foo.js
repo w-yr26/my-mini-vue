@@ -1,11 +1,10 @@
 import { h } from "../../lib/mini-vue.es.js";
 
 window.self = null;
-export const App = {
+export const Foo = {
   render() {
-    window.self = this;
     // ui
-    return h("div", {}, "hi " + this.count);
+    return h("div", {}, "foo: " + this.count);
   },
   setup(props) {
     // 1. 通过setup拿到props(假设传下来的props是一个包含count属性的对象)
