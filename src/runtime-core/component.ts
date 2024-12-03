@@ -8,6 +8,7 @@
  */
 
 import { shallowReadonly } from '../reactivity/reactive'
+import { emit } from './componentEmit'
 import { initProps } from './componentProps'
 import { componentPublicInstance } from './componentPublicInstance'
 
@@ -17,7 +18,12 @@ export function createComponentInstance(vnode) {
     vnode,
     type: vnode.type,
     setupState: {},
+    props: {},
+    emit: () => {} 
   }
+
+  // 将emit处理函数挂载到组件实例身上
+  component.emit = emit.bind(null, component) as any
 
   return component
 }
@@ -44,7 +50,9 @@ function setupStatefulComponent(instance) {
   const { setup } = Component
   // 用户使用vue时，不一定会传入setup
   if (setup) {
-    const setupResult = setup(shallowReadonly(instance.props))
+    const setupResult = setup(shallowReadonly(instance.props), {
+      emit: instance.emit
+    })
     handleSetupResult(instance, setupResult)
   }
 }
