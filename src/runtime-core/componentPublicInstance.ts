@@ -1,3 +1,5 @@
+import { hasOwn } from '../shared/index'
+
 const publicPropertiesMap = {
   $el: (i) => i.vnode.el,
 }
@@ -9,9 +11,7 @@ export const componentPublicInstance = {
       return setupState[key]
     }
 
-    // 判断对象身上是否存在某个属性
-    const hasOwn = (val, key) => Object.prototype.hasOwnProperty.call(val, key)
-
+    // 判断键值在setup return的对象身上还是props对象身上
     if (hasOwn(setupState, key)) {
       return setupState[key]
     } else if (hasOwn(props, key)) {
