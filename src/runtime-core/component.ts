@@ -7,6 +7,8 @@
  * }
  */
 
+import { shallowReadonly } from '../reactivity/reactive'
+import { initProps } from './componentProps'
 import { componentPublicInstance } from './componentPublicInstance'
 
 // 创建组件实例对象，挂载一些后续操作需要使用的东西
@@ -22,8 +24,10 @@ export function createComponentInstance(vnode) {
 
 // 组件初始化
 export function setupComponent(instance) {
+  // 初始化传给组件的props -> 挂载到组件实例的props上
+  initProps(instance, instance.vnode.props)
+
   // TODO
-  // initProps() -> 初始化传给组件的props
   // initSlots() -> 初始化插槽
 
   // 处理组件的setup部分
@@ -40,7 +44,7 @@ function setupStatefulComponent(instance) {
   const { setup } = Component
   // 用户使用vue时，不一定会传入setup
   if (setup) {
-    const setupResult = setup()
+    const setupResult = setup(shallowReadonly(instance.props))
     handleSetupResult(instance, setupResult)
   }
 }
