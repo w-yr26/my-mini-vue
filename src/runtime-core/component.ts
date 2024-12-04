@@ -36,7 +36,7 @@ export function setupComponent(instance) {
   initProps(instance, instance.vnode.props)
 
   // 初始化插槽
-  initSlots(instance, instance.vnode.props)
+  initSlots(instance, instance.vnode.children)
 
   // 处理组件的setup部分
   setupStatefulComponent(instance)

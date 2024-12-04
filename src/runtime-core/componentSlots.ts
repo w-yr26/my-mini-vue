@@ -1,4 +1,9 @@
 export function initSlots(instance, children) {
-  // 将组件实例的vnode的children挂载到instance.slots身上，方便后续访问
-  instance.slots = Array.isArray(children) ? children : [children]
+  const slots = {}
+  for (const key in children) {
+    const value = children[key]
+    slots[key] = Array.isArray(value) ? value : [value]
+  }
+
+  instance.slots = slots
 }
