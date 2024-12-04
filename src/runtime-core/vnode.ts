@@ -8,11 +8,18 @@ export function createVNode(type, props?, children?) {
     el: null,
     shapeFlag: getShapeFlag(type),
   }
-  // debugger;
+
   if (typeof children === 'string') {
     vnode.shapeFlag = vnode.shapeFlag | ShapeFlags.TEXT_CHILDREN
   } else if (Array.isArray(children)) {
     vnode.shapeFlag = vnode.shapeFlag | ShapeFlags.ARRAY_CHILDREN
+  }
+
+  // 判断其是否有slot (组件 + children object)
+  if (vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
+    if (typeof children === 'object') {
+      vnode.shapeFlag = vnode.shapeFlag | ShapeFlags.SLOT_CHILDREN
+    }
   }
 
   return vnode

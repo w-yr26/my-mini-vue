@@ -9,8 +9,8 @@ export const App = {
       Foo,
       {},
       {
-        first: h('p', {}, 'first'),
-        last: h('p', {}, 'last'),
+        first: ({ age }) => h('p', {}, 'first-' + age),
+        last: () => h('p', {}, 'last'),
       }
     )
     // const foo = h(Foo, {}, h('p', {}, 'this is slot1'))

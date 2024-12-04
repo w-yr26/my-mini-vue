@@ -3,6 +3,7 @@ export const enum ShapeFlags {
   STATEFUL_COMPONENT = 1 << 1, // 0010 -> type为component
   TEXT_CHILDREN = 1 << 2, // 0100 -> children为string
   ARRAY_CHILDREN = 1 << 3, // 1000 -> children为Array
+  SLOT_CHILDREN = 1 <<4 // 1 0000 -> slot
 }
 
 // 设置当前vnode的类型
