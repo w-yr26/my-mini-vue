@@ -1,6 +1,7 @@
 import { isObject } from '../shared/index'
 import { ShapeFlags } from '../shared/shapeFlags'
 import { createComponentInstance, setupComponent } from './component'
+import { Fragment } from './vnode'
 
 export function render(vnode, container) {
   patch(vnode, container)
@@ -9,14 +10,27 @@ export function render(vnode, container) {
 function patch(vnode, container) {
   // 通过type判断是去处理 Component 类型 or element 类型
   // 如果是组件，vnode.type是组件对象
-  const { shapeFlag } = vnode
-  if (shapeFlag & ShapeFlags.ELEMENT) {
-    // 渲染element类型
-    processElement(vnode, container)
-  } else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
-    // 渲染组件类型
-    processComponent(vnode, container)
+  const { shapeFlag, type } = vnode
+
+  switch (type) {
+    case Fragment:
+      processFragment(vnode, container)
+      break
+
+    default:
+      if (shapeFlag & ShapeFlags.ELEMENT) {
+        // 渲染element类型
+        processElement(vnode, container)
+      } else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
+        // 渲染组件类型
+        processComponent(vnode, container)
+      }
+      break
   }
+}
+
+function processFragment(vnode, container) {
+  mountChildren(vnode, container)
 }
 
 /**
@@ -41,9 +55,7 @@ function processElement(vnode, container) {
     el.textContent = children
   } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
     // Array类型，递归调用patch -> 进入patch后，再度判断是渲染Component or element
-    children.forEach((v) => {
-      patch(v, el)
-    })
+    mountChildren(vnode, el)
   }
   // props
   const { props } = vnode
@@ -60,6 +72,12 @@ function processElement(vnode, container) {
   }
 
   container.append(el)
+}
+
+function mountChildren(vnode, container) {
+  vnode.children.forEach((v) => {
+    patch(v, container)
+  })
 }
 
 function processComponent(vnode, container) {
