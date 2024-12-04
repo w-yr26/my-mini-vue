@@ -1,4 +1,4 @@
-import { h } from '../../lib/mini-vue.es.js'
+import { h, createTextVNode } from '../../lib/mini-vue.es.js'
 import { Foo } from './Foo.js'
 
 export const App = {
@@ -9,7 +9,7 @@ export const App = {
       Foo,
       {},
       {
-        first: ({ age }) => h('p', {}, 'first-' + age),
+        first: ({ age }) => [h('p', {}, 'first-' + age), createTextVNode('this is Text')],
         last: () => h('p', {}, 'last'),
       }
     )

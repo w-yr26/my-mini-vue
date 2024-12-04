@@ -1,7 +1,6 @@
-import { isObject } from '../shared/index'
 import { ShapeFlags } from '../shared/shapeFlags'
 import { createComponentInstance, setupComponent } from './component'
-import { Fragment } from './vnode'
+import { Fragment, Text } from './vnode'
 
 export function render(vnode, container) {
   patch(vnode, container)
@@ -16,7 +15,9 @@ function patch(vnode, container) {
     case Fragment:
       processFragment(vnode, container)
       break
-
+    case Text:
+      processText(vnode, container)
+      break
     default:
       if (shapeFlag & ShapeFlags.ELEMENT) {
         // 渲染element类型
@@ -29,8 +30,17 @@ function patch(vnode, container) {
   }
 }
 
+// 创建Fragment
 function processFragment(vnode, container) {
   mountChildren(vnode, container)
+}
+
+// 创建文本节点
+function processText(vnode, container) {
+  // 此时的children就是纯文本
+  const { children } = vnode
+  const textNode = (vnode.el = document.createTextNode(children))
+  container.append(textNode)
 }
 
 /**
