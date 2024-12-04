@@ -1,4 +1,4 @@
-import { isObject } from '../shared'
+import { isObject } from '../shared/index'
 import { track, trigger } from './effect'
 
 function createGetter(isReadOnly = false, shallow = false) {
