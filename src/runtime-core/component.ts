@@ -14,13 +14,15 @@ import { componentPublicInstance } from './componentPublicInstance'
 import { initSlots } from './componentSlots'
 
 // 创建组件实例对象，挂载一些后续操作需要使用的东西
-export function createComponentInstance(vnode) {
+export function createComponentInstance(vnode, parent) {
   const component = {
     vnode,
     type: vnode.type,
     setupState: {},
     props: {},
     slots: {},
+    provides: parent ? parent.provides : {},
+    parent,
     emit: () => {},
   }
 
