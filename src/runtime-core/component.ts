@@ -21,7 +21,7 @@ export function createComponentInstance(vnode) {
     setupState: {},
     props: {},
     slots: {},
-    emit: () => {} 
+    emit: () => {},
   }
 
   // 将emit处理函数挂载到组件实例身上
@@ -52,9 +52,14 @@ function setupStatefulComponent(instance) {
   const { setup } = Component
   // 用户使用vue时，不一定会传入setup
   if (setup) {
+    // 执行setup的时候，为currentInstance赋值
+    setCurrentInstance(instance)
     const setupResult = setup(shallowReadonly(instance.props), {
-      emit: instance.emit
+      emit: instance.emit,
     })
+    // 重置currentInstance
+    setCurrentInstance(null)
+
     handleSetupResult(instance, setupResult)
   }
 }
@@ -87,4 +92,13 @@ function finishComponentSetup(instance) {
   if (render) {
     instance.render = render
   }
+}
+
+let currentInstance = null
+export function getCurrentInstance() {
+  return currentInstance
+}
+
+function setCurrentInstance(instance) {
+  currentInstance = instance
 }
