@@ -5,7 +5,11 @@ import { createAppAPI } from './createApp'
 import { Fragment, Text } from './vnode'
 
 export function createRenderer(options) {
-  const { createElement, patchProp, insert } = options
+  const {
+    createElement: hostCreateElement,
+    patchProp: hostPatchProp,
+    insert: hostInsert,
+  } = options
 
   function render(vnode, container, parentComponent) {
     patch(null, vnode, container, parentComponent)
@@ -73,14 +77,35 @@ export function createRenderer(options) {
   }
 
   function patchElement(n1, n2, contain) {
-    console.log('patchElement')
-    console.log('n1', n1)
-    console.log('n2', n2)
+    // 更新props
+    const oldProps = n1.props || {}
+    const newProps = n2.props || {}
+    // 第一次是初始化，走mountElement(里面会将创建的元素挂载到vnode.el身上)
+    // 第二次是更新，走的是patchElement(此时n2身上的el就不再会进行赋值)，所以此处要把上一个(也就是n1)的el先给n2
+    // 再接着走一次，第二次的n2已经变成第一次的n1了，所以此时就不会没有值
+    // 而且这个el是引用型数据，做出修改时n1、n2的el都会同步做出修改
+    const el = (n2.el = n1.el)
+    patchProps(el, oldProps, newProps)
+  }
+
+  function patchProps(el, oldProps, newProps) {
+    // 新旧props的key-value都一样时，不需要再执行。但这里是错误写法，因为比较的是地址
+    // if (oldProps === newProps) return console.log('无需执行')
+    
+    for (const key in newProps) {
+      const prevProp = oldProps[key]
+      const nextProp = newProps[key]
+      hostPatchProp(el, key, prevProp, nextProp)
+    }
+
+    for (const key in oldProps) {
+      if (!(key in newProps)) hostPatchProp(el, key, oldProps[key], null)
+    }
   }
 
   function mountElement(vnode, container, parentComponent) {
     //  创建节点
-    const el = (vnode.el = createElement(vnode.type))
+    const el = (vnode.el = hostCreateElement(vnode.type))
     // children -> string or Array
     const { children, shapeFlag } = vnode
     if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
@@ -94,10 +119,10 @@ export function createRenderer(options) {
     const { props } = vnode
     for (const key in props) {
       const val = props[key]
-      patchProp(el, key, val)
+      hostPatchProp(el, key, null, val)
     }
 
-    insert(el, container)
+    hostInsert(el, container)
   }
 
   function mountChildren(vnode, container, parentComponent) {
