@@ -8,6 +8,7 @@
  */
 
 import { shallowReadonly } from '../reactivity/reactive'
+import { proxyRefs } from '../reactivity/ref'
 import { emit } from './componentEmit'
 import { initProps } from './componentProps'
 import { componentPublicInstance } from './componentPublicInstance'
@@ -23,6 +24,8 @@ export function createComponentInstance(vnode, parent) {
     slots: {},
     provides: parent ? parent.provides : {},
     parent,
+    isMounted: false,
+    subTree: {},
     emit: () => {},
   }
 
@@ -32,7 +35,7 @@ export function createComponentInstance(vnode, parent) {
   return component
 }
 
-// 组件初始化
+// 组件初始化 -> 一个组件的setup()要处理:父组件传来的props、插槽内容、自身setup()返回的值
 export function setupComponent(instance) {
   // 初始化传给组件的props -> 挂载到组件实例的props上
   initProps(instance, instance.vnode.props)
@@ -70,9 +73,8 @@ function setupStatefulComponent(instance) {
 function handleSetupResult(instance, setupResult) {
   // setup可能是一个对象，也可能是一个函数。因为在vue3中，可以有函数式组件的写法
   // TODO function
-
   if (typeof setupResult === 'object') {
-    instance.setupState = setupResult
+    instance.setupState = proxyRefs(setupResult)
   }
 
   // 处理完组件的setup之后，其实initProps、initSlots也处理完毕，此时要处理组件的render部分
