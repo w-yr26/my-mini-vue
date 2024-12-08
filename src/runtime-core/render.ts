@@ -134,6 +134,7 @@ export function createRenderer(options) {
     let i = 0
     let e1 = c1.length - 1
     let e2 = c2.length - 1
+    const l2 = e2 + 1
 
     // 判断两个vnode是否一致
     function isSomeVNodeType(n1, n2) {
@@ -184,8 +185,8 @@ export function createRenderer(options) {
     // 3. 创建
     if (i > e1) {
       if (i <= e2) {
-        const nextPos = e2 + 1
-        const anchor = e2 + 1 < c2.length ? c2[nextPos].el : null
+        const nextPos = l2
+        const anchor = l2 < c2.length ? c2[nextPos].el : null
         while (i <= e2) {
           patch(null, c2[i], container, parentComponent, anchor)
           i++
@@ -205,6 +206,8 @@ export function createRenderer(options) {
       let toBePatched = e2 - s2 + 1 // 乱序部分待被处理的新结点个数
       let patched = 0 // 乱序部分已经处理的新结点个数
       const keyToNewIndexMap = new Map()
+      // 新的vnode在老的vnodes中的位置，先都初始化为0，如果新的vnode映射到老的vnodes的时候位置为0，说明新结点在老节点中不存在，就需要创建新的vnode
+      const newIndexToOldIndexMap = new Array(toBePatched).fill(0)
 
       // 再来说说乱序比较中，key的作用：帮助快速定位老的vnode在新的children中是否存在
       // 老的children: A B (C D) F G
@@ -225,6 +228,8 @@ export function createRenderer(options) {
         keyToNewIndexMap.set(nextChild.key, t)
       }
 
+      // 遍历旧的vnodes，查看旧的vnode是否在新的vnodes中存在
+      // 且使用最长递增子序列，求出新的vnodes中相对位置不变的部分
       for (let t = s1; t <= e1; t++) {
         const prevChild = c1[t]
 
@@ -254,11 +259,37 @@ export function createRenderer(options) {
           // 旧的节点在新的children中找不到 -> 移除
           hostRemove(prevChild.el)
         } else {
-          // 旧的节点在新的children中找得到 -> 深度对比
+          // 旧的节点在新的vnods中找得到 -> 移动位置 -> 由于diff算法是在整个程序中频繁调用的，所以肯定不能直接暴力全部重新渲染，此时可以使用最长递增子序列，求出稳定不变的部分
+          // 由于newIndexToOldIndexMap[] = 0意味着vnode在老的中不存在，为了避免i=0，所以统一+1，反正后续进行最长递增子序列算法的时候也只是要得到对应的下标
+          newIndexToOldIndexMap[newIndex - s2] = t + 1
+          // 旧的节点在新的children中找得到 -> 深度对比，对比完还要移动更新渲染位置(怎么理解深度对比的时候还是调用patch？因为进入patch之后，后续根据条件判断，最终还是会走到patchElement)
           patch(prevChild, c2[newIndex], container, parentComponent, null)
           patched++
         }
       }
+
+      // const increasingIndexSequence = getSequence(newIndexToOldIndexMap)
+      // 最长递增子序列指针
+      // let j = increasingIndexSequence.length - 1
+      // for (let t = toBePatched - 1; t >= 0; t--) {
+      //   const nextIndex = t + s2
+      //   const nextChild = c2[nextIndex]
+      //   const anchor = nextIndex + 1 < l2 ? c2[nextIndex + 1].el : null
+      //   if (newIndexToOldIndexMap[t] === 0) {
+      //     // 在老的里面不存在，在新的里面存在
+      //     patch(null, nextChild, container, parentComponent, anchor)
+      //   } else {
+      //     // 在新的老的里面都存在
+      //     if (t !== increasingIndexSequence[j]) {
+      //       // console.log('移动位置')
+      //       // 明明前面newIndex不为空的时候已经调用patch了，为什么这里还要执行hostInsert？hostInsert不是会重复创建元素吗？
+      //       // 对于insertBefore来说，如果节点在容器内已经存在，则不会再创建，而是按照指定的位置进行移动；只有节点在容器内不存在，才会创建
+      //       hostInsert(nextChild.el, container, anchor)
+      //     } else {
+      //       j--
+      //     }
+      //   }
+      // }
     }
   }
 
@@ -352,4 +383,45 @@ export function createRenderer(options) {
   return {
     createApp: createAppAPI(render),
   }
+}
+
+function getSequence(arr: number[]): number[] {
+  const p = arr.slice()
+  const result = [0]
+  let i, j, u, v, c
+  const len = arr.length
+  for (i = 0; i < len; i++) {
+    const arrI = arr[i]
+    if (arrI !== 0) {
+      j = result[result.length - 1]
+      if (arr[j] < arrI) {
+        p[i] = j
+        result.push(i)
+        continue
+      }
+      u = 0
+      v = result.length - 1
+      while (u < v) {
+        c = (u + v) >> 1
+        if (arr[result[c]] < arrI) {
+          u = c + 1
+        } else {
+          v = c
+        }
+      }
+      if (arrI < arr[result[u]]) {
+        if (u > 0) {
+          p[i] = result[u - 1]
+        }
+        result[u] = i
+      }
+    }
+  }
+  u = result.length
+  v = result[u - 1]
+  while (u-- > 0) {
+    result[u] = v
+    v = p[v]
+  }
+  return result
 }
