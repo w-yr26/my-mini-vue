@@ -145,6 +145,19 @@ export function createRenderer(options) {
       const n1 = c1[i]
       const n2 = c2[i]
 
+      // 有关为什么要设置key的思考：
+      // 在左侧比较中
+      // 首先是根据vnode的type和key来进行判断新旧是否相同的。但由于一般开发中很少去修改type，所以此处就仅讨论key
+      // 现在假设新旧的vnode的type都是相同的
+      // 如果都不设置key，那么oldVnode.key === undefined === newVnode.key，也就意味这判断会认定他俩是相同的
+      //  那么就会一直进入这个分支，递归调用patch -> 进而执行 patchElement
+      // 但是存在一种情况就是当乱序的时候：
+      // A B C D E
+      // A B D C E
+      // 前面两个(A B)递归调用patch()没毛病，但是到了 C -> D 进行比对的时候，会认为是同个类型(前面已经假定type一致)
+      // 此时就会调用patch -> 进而把 C 换成 D；到了 D -> C 比对的时候，同样的逻辑，把 D 换成 C
+      // 但其实 C D -> D C 是可以复用的，把 C 换成 D，再把 D 换成 C 其实是没必要的，所以说要加个 key
+      // 在右侧比较中，key的作用同上
       if (isSomeVNodeType(n1, n2)) {
         // 调用patch()递归执行 -> 因为拿到的n1 n2可能是element、也可能是component
         patch(n1, n2, container, parentComponent, parentAnchor)
@@ -186,6 +199,66 @@ export function createRenderer(options) {
       }
     } else {
       // 乱序比较
+      let s1 = i
+      let s2 = i
+
+      let toBePatched = e2 - s2 + 1 // 乱序部分待被处理的新结点个数
+      let patched = 0 // 乱序部分已经处理的新结点个数
+      const keyToNewIndexMap = new Map()
+
+      // 再来说说乱序比较中，key的作用：帮助快速定位老的vnode在新的children中是否存在
+      // 老的children: A B (C D) F G
+      // 新的children: A B (E C) F G
+      // 如果没有key，在前面左侧对比的时候，就已经被挨个替换了
+      // 如果没有设置 key，那么最初在建立映射hash表的时候，得到的结果就是
+      // { undefined -> index }
+      // 等到老的children乱序部分来进行遍历的时候(也就是C D节点)，由于prevChild.key !== null始终不满足，
+      // 所以对于老的乱序部分的每一个节点都会走else分支，也就是遍历新的乱序部分，看看老的vnode是否存在于新的children( C/D 是否存在于(E C))
+      // 但是在比较的过程中，始终都认为它们是一致的(因为前面说type一致，而他们的key又都是undefined)
+      // 就会拿到newIndex
+      // 一拿到newIndex，就会走patch的逻辑。也就是 C 会被换成 E，D 会被换成 C
+      // 但你发现 C 是没必要被换掉之后再换回来的，所以说要key
+
+      // 先建立映射表，存放新的children有哪些节点
+      for (let t = s2; t <= e2; t++) {
+        const nextChild = c2[t]
+        keyToNewIndexMap.set(nextChild.key, t)
+      }
+
+      for (let t = s1; t <= e1; t++) {
+        const prevChild = c1[t]
+
+        // 所有的新vnode都被处理完了 -> 多出来的旧的vnode直接移除
+        if (patched >= toBePatched) {
+          hostRemove(prevChild.el)
+          continue
+        }
+
+        let newIndex
+        // 对应 key 为null/undefined的情况
+        if (prevChild.key !== null) {
+          // 有key，直接根据key进行比较
+          newIndex = keyToNewIndexMap.get(prevChild.key)
+        } else {
+          // 没有key，遍历新的children，看看老的节点是否还在新的里面
+          for (let j = s2; j <= e2; j++) {
+            // isSomeVNodeType是根据key和type进行比较的，但由于此时都已经是老的vnode没有key的情况了，所以这个分支一定不会走
+            if (isSomeVNodeType(prevChild, c2[j])) {
+              newIndex = j
+              break
+            }
+          }
+        }
+
+        if (!newIndex) {
+          // 旧的节点在新的children中找不到 -> 移除
+          hostRemove(prevChild.el)
+        } else {
+          // 旧的节点在新的children中找得到 -> 深度对比
+          patch(prevChild, c2[newIndex], container, parentComponent, null)
+          patched++
+        }
+      }
     }
   }
 
