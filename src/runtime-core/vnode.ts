@@ -7,6 +7,7 @@ export function createVNode(type, props?, children?) {
   const vnode = {
     type,
     props,
+    key: props && props.key,
     children,
     el: null,
     shapeFlag: getShapeFlag(type),
@@ -29,8 +30,8 @@ export function createVNode(type, props?, children?) {
 }
 
 // 创建文本vnode
-export function createTextVNode(text){
-  return createVNode(Text, {} , text)
+export function createTextVNode(text) {
+  return createVNode(Text, {}, text)
 }
 
 function getShapeFlag(type) {
