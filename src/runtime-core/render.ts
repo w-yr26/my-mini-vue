@@ -208,6 +208,8 @@ export function createRenderer(options) {
       const keyToNewIndexMap = new Map()
       // 新的vnode在老的vnodes中的位置，先都初始化为0，如果新的vnode映射到老的vnodes的时候位置为0，说明新结点在老节点中不存在，就需要创建新的vnode
       const newIndexToOldIndexMap = new Array(toBePatched).fill(0)
+      let moved = false
+      let maxNewIndexSoFar = 0
 
       // 再来说说乱序比较中，key的作用：帮助快速定位老的vnode在新的children中是否存在
       // 老的children: A B (C D) F G
@@ -268,30 +270,39 @@ export function createRenderer(options) {
           // 其次，hostInsert 是将元素插入文档、，不是创建创建元素，别搞混了！
           // 再者，要知道为什么要是有LIS？是对于有些节点，它在新旧vnodes中并没有发生改变，但是它的顺序发生了改变，此时没必要暴力删除重建，而是可以通过移动实现未发生变化的vnode的复用
           // 而移动到哪？怎么移，就需要使用LIS
+          if (newIndex > maxNewIndexSoFar) {
+            maxNewIndexSoFar = newIndex
+          } else {
+            moved = true
+          }
           patch(prevChild, c2[newIndex], container, parentComponent, null)
           patched++
         }
       }
 
-      const increasingIndexSequence = getSequence(newIndexToOldIndexMap)
+      const increasingIndexSequence = moved
+        ? getSequence(newIndexToOldIndexMap)
+        : []
       // 最长递增子序列指针
       let j = increasingIndexSequence.length - 1
       for (let t = toBePatched - 1; t >= 0; t--) {
         const nextIndex = t + s2
         const nextChild = c2[nextIndex]
         const anchor = nextIndex + 1 < l2 ? c2[nextIndex + 1].el : null
-        if (newIndexToOldIndexMap[t] === 0) {
-          // 在老的里面不存在，在新的里面存在(注意，此处patch第一个参数为null，所以走到patch里面最后会执行创建逻辑而不是更新逻辑，也就是mountElement，mountElement内即会创建，还会插入)
-          patch(null, nextChild, container, parentComponent, anchor)
-        } else {
-          // 在新的老的里面都存在
-          if (t !== increasingIndexSequence[j]) {
-            // console.log('移动位置')
-            // 明明前面newIndex不为空的时候已经调用patch了，为什么这里还要执行hostInsert？hostInsert不是会重复创建元素吗？
-            // 对于insertBefore来说，如果节点在容器内已经存在，则不会再创建，而是按照指定的位置进行移动；只有节点在容器内不存在，才会创建
-            hostInsert(nextChild.el, container, anchor)
+        if (moved) {
+          if (newIndexToOldIndexMap[t] === 0) {
+            // 在老的里面不存在，在新的里面存在(注意，此处patch第一个参数为null，所以走到patch里面最后会执行创建逻辑而不是更新逻辑，也就是mountElement，mountElement内即会创建，还会插入)
+            patch(null, nextChild, container, parentComponent, anchor)
           } else {
-            j--
+            // 在新的老的里面都存在
+            if (t !== increasingIndexSequence[j]) {
+              // console.log('移动位置')
+              // 明明前面newIndex不为空的时候已经调用patch了，为什么这里还要执行hostInsert？hostInsert不是会重复创建元素吗？
+              // 对于insertBefore来说，如果节点在容器内已经存在，则不会再创建，而是按照指定的位置进行移动；只有节点在容器内不存在，才会创建
+              hostInsert(nextChild.el, container, anchor)
+            } else {
+              j--
+            }
           }
         }
       }

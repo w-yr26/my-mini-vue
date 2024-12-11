@@ -103,30 +103,11 @@ import { h, ref } from '../../lib/mini-vue.es.js'
 // ]
 
 //    5.2 中间部分 新的老的里面都存在 -> 更新渲染位置
-const prevChildren = [
-  h('div', { key: 'A' }, 'A'),
-  h('div', { key: 'B' }, 'B'),
-  h('div', { key: 'C' }, 'C'),
-  h('div', { key: 'D' }, 'D'),
-  h('div', { key: 'E' }, 'E'),
-  h('div', { key: 'F' }, 'F'),
-  h('div', { key: 'G' }, 'G'),
-]
-const nextChildren = [
-  h('div', { key: 'A' }, 'A'),
-  h('div', { key: 'B' }, 'B'),
-  h('div', { key: 'E' }, 'E'),
-  h('div', { key: 'C' }, 'C'),
-  h('div', { key: 'D' }, 'D'),
-  h('div', { key: 'F' }, 'F'),
-  h('div', { key: 'G' }, 'G'),
-]
-
-//    5.3 中间部分 节点在老的里面不存在，在新的里面存在 -> 创建新的
 // const prevChildren = [
 //   h('div', { key: 'A' }, 'A'),
 //   h('div', { key: 'B' }, 'B'),
 //   h('div', { key: 'C' }, 'C'),
+//   h('div', { key: 'D' }, 'D'),
 //   h('div', { key: 'E' }, 'E'),
 //   h('div', { key: 'F' }, 'F'),
 //   h('div', { key: 'G' }, 'G'),
@@ -140,6 +121,25 @@ const nextChildren = [
 //   h('div', { key: 'F' }, 'F'),
 //   h('div', { key: 'G' }, 'G'),
 // ]
+
+//    5.3 中间部分 节点在老的里面不存在，在新的里面存在 -> 创建新的
+const prevChildren = [
+  h('div', { key: 'A' }, 'A'),
+  h('div', { key: 'B' }, 'B'),
+  h('div', { key: 'C' }, 'C'),
+  h('div', { key: 'E' }, 'E'),
+  h('div', { key: 'F' }, 'F'),
+  h('div', { key: 'G' }, 'G'),
+]
+const nextChildren = [
+  h('div', { key: 'A' }, 'A'),
+  h('div', { key: 'B' }, 'B'),
+  h('div', { key: 'E' }, 'E'),
+  h('div', { key: 'C' }, 'C'),
+  h('div', { key: 'D' }, 'D'),
+  h('div', { key: 'F' }, 'F'),
+  h('div', { key: 'G' }, 'G'),
+]
 
 export const ArrayToArray = {
   name: 'ArrayToArray',
