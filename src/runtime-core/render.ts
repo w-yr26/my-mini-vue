@@ -3,6 +3,7 @@ import { ShapeFlags } from '../shared/shapeFlags'
 import { createComponentInstance, setupComponent } from './component'
 import { shouldUpdate } from './componentUpdateUtils'
 import { createAppAPI } from './createApp'
+import { queueJobs } from './scheduler'
 import { Fragment, Text } from './vnode'
 
 export function createRenderer(options) {
@@ -416,38 +417,48 @@ export function createRenderer(options) {
   }
 
   function setupRenderEffect(instance, vnode, container, anchor) {
-    instance.update = effect(() => {
-      if (!instance.isMounted) {
-        // init
-        const { proxy } = instance
-        const subTree = (instance.subTree = instance.render.call(proxy))
-        patch(null, subTree, container, instance, anchor)
+    instance.update = effect(
+      () => {
+        if (!instance.isMounted) {
+          // init
+          const { proxy } = instance
+          const subTree = (instance.subTree = instance.render.call(proxy))
+          patch(null, subTree, container, instance, anchor)
 
-        vnode.el = subTree.el
+          vnode.el = subTree.el
 
-        instance.isMounted = true
-      } else {
-        // 组件的更新逻辑是借助effect的返回值触发执行的
-        // effect返回一个runner，当调用runner的时候，就可以再次执行传给effect的函数，当更新组件的时候调用runner，就能跳转到这里执行
-        // console.log('update Component')
+          instance.isMounted = true
+        } else {
+          console.log('exe')
 
-        // 更新组件的props,next是新的vnode，vnode是老的vnode
-        const { next, vnode } = instance
-        if (next) {
-          next.el = vnode.el
-          updateComponentPreRender(instance, next)
+          // 组件的更新逻辑是借助effect的返回值触发执行的
+          // effect返回一个runner，当调用runner的时候，就可以再次执行传给effect的函数，当更新组件的时候调用runner，就能跳转到这里执行
+          // console.log('update Component')
+
+          // 更新组件的props,next是新的vnode，vnode是老的vnode
+          const { next, vnode } = instance
+          if (next) {
+            next.el = vnode.el
+            updateComponentPreRender(instance, next)
+          }
+
+          // 重新执行组件文件的render()方法
+          const { proxy } = instance
+          const subTree = instance.render.call(proxy)
+          const preSubTree = instance.subTree
+          // 更新组件实例身上的subTree -> 应该放当前的
+          instance.subTree = subTree
+
+          patch(preSubTree, subTree, container, instance, anchor)
         }
-
-        // 重新执行组件文件的render()方法
-        const { proxy } = instance
-        const subTree = instance.render.call(proxy)
-        const preSubTree = instance.subTree
-        // 更新组件实例身上的subTree -> 应该放当前的
-        instance.subTree = subTree
-
-        patch(preSubTree, subTree, container, instance, anchor)
+      },
+      {
+        scheduler: () => {
+          console.log('exe scheduler')
+          queueJobs(instance.update)
+        },
       }
-    })
+    )
   }
 
   return {
