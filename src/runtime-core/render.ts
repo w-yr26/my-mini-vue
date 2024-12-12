@@ -1,6 +1,7 @@
 import { effect } from '../reactivity/effect'
 import { ShapeFlags } from '../shared/shapeFlags'
 import { createComponentInstance, setupComponent } from './component'
+import { shouldUpdate } from './componentUpdateUtils'
 import { createAppAPI } from './createApp'
 import { Fragment, Text } from './vnode'
 
@@ -360,20 +361,62 @@ export function createRenderer(options) {
   }
 
   function processComponent(n1, n2, container, parentComponent, anchor) {
-    mountComponent(n2, container, parentComponent, anchor)
+    if (!n1) {
+      mountComponent(n2, container, parentComponent, anchor)
+    } else {
+      updateComponent(n1, n2)
+    }
   }
 
+  // 更新组件 -> 更新组件的props、重新执行组件的render() ->进而触发更新element
+  function updateComponent(n1, n2) {
+    // if (shouldUpdate(n1, n2)) {
+    //   const instance = (n2.component = n1.component)
+    //   instance.next = n2
+    //   instance.update()
+    // } else {
+    //   // 会有一种情况：先是更新和当前组件依赖的响应式数据无关的值，再更新和当前组件依赖的响应式数据有关的值
+    //   // 但是此时在走shouldUpdate的分支的时候，n1.component为null，null身上就不再能访问next属性
+    //   // 因为n1代表的是旧的vnode，只是一进来就更新和当前组件依赖的响应式数据的话，n1刚好就是最开始执行创建逻辑的vnode，身上的component就不为null(因为在mountComponent已经赋值)
+    //   // 所以在此处也需要进行更新
+    // }
+
+    const instance = (n2.component = n1.component)
+    if (shouldUpdate(n1, n2)) {
+      instance.next = n2
+      instance.update()
+    } else {
+      // 会有一种情况：先是更新和当前组件依赖的响应式数据无关的值，再更新和当前组件依赖的响应式数据有关的值
+      // 但是此时在走shouldUpdate的分支的时候，n1.component为null，null身上就不再能访问next属性
+      // 因为n1代表的是旧的vnode，只是一进来就更新和当前组件依赖的响应式数据的话，n1刚好就是最开始执行创建逻辑的vnode，身上的component就不为null(因为在mountComponent已经赋值)
+      // 所以在此处也需要进行更新
+      // 要注意：第一次更新的n2在第二次更新会变成n1
+      n2.el = n1.el
+      instance.vnode = n2
+    }
+  }
+
+  /**
+   * instance和vnode的关联：
+   * instance：组件实例对象，props代表父组件传给子组件的属性，身上的vnode属性代表上一个vnode对象，next属性代表下一个vnode对象
+   * vnode：虚拟节点，props代表id、class等，身上的el属性代表根容器，身上的component属性代表组件实例对象
+   * instance和vnode存在着能够相互引用的字段
+   */
+
   // 组件挂载
-  function mountComponent(vnode, container, parentComponent, anchor) {
-    const instance = createComponentInstance(vnode, parentComponent)
+  function mountComponent(initialVNode, container, parentComponent, anchor) {
+    const instance = (initialVNode.component = createComponentInstance(
+      initialVNode,
+      parentComponent
+    ))
     // 处理setup部分
     setupComponent(instance)
     // 处理render
-    setupRenderEffect(instance, vnode, container, anchor)
+    setupRenderEffect(instance, initialVNode, container, anchor)
   }
 
   function setupRenderEffect(instance, vnode, container, anchor) {
-    effect(() => {
+    instance.update = effect(() => {
       if (!instance.isMounted) {
         // init
         const { proxy } = instance
@@ -384,7 +427,18 @@ export function createRenderer(options) {
 
         instance.isMounted = true
       } else {
-        // update
+        // 组件的更新逻辑是借助effect的返回值触发执行的
+        // effect返回一个runner，当调用runner的时候，就可以再次执行传给effect的函数，当更新组件的时候调用runner，就能跳转到这里执行
+        // console.log('update Component')
+
+        // 更新组件的props,next是新的vnode，vnode是老的vnode
+        const { next, vnode } = instance
+        if (next) {
+          next.el = vnode.el
+          updateComponentPreRender(instance, next)
+        }
+
+        // 重新执行组件文件的render()方法
         const { proxy } = instance
         const subTree = instance.render.call(proxy)
         const preSubTree = instance.subTree
@@ -399,6 +453,12 @@ export function createRenderer(options) {
   return {
     createApp: createAppAPI(render),
   }
+}
+
+function updateComponentPreRender(instance, nextVNode) {
+  instance.vnode = nextVNode
+  instance.next = null
+  instance.props = nextVNode.props
 }
 
 function getSequence(arr: number[]): number[] {
