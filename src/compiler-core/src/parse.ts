@@ -13,17 +13,37 @@ export function baseParse(content) {
 function parseChildren(context) {
   const nodes: any[] = []
   let node
-  // 以'{{'才有必要进行解析
   const s = context.source
   if (s.startsWith('{{')) {
+    // 解析插值表达式
     node = parseInterpolation(context)
   } else if (s[0] === '<') {
+    // 解析tag
     if (/[a-z]/i.test(s[1])) {
       node = parseElement(context)
     }
   }
+
+  if (!node) {
+    node = parseText(context)
+  }
   nodes.push(node)
   return nodes
+}
+
+// 解析文本
+function parseText(context) {
+  const content = context.source.slice(0, context.source.length)
+  console.log('content', content)
+
+  // 推进
+  advanceBy(context, context.source.length)
+  console.log('content', context.source)
+
+  return {
+    type: NodeTypes.TEXT,
+    content,
+  }
 }
 
 // 解析element
