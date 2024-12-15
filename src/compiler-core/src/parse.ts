@@ -7,12 +7,12 @@ const enum TagType {
 
 export function baseParse(content) {
   const context = createParserContext(content)
-  return createRoot(parseChildren(context, ''))
+  return createRoot(parseChildren(context, []))
 }
 
-function parseChildren(context, parentTag) {
+function parseChildren(context, ancestors) {
   const nodes: any[] = []
-  while (!isEnd(context, parentTag)) {
+  while (!isEnd(context, ancestors)) {
     let node
     const s = context.source
     if (s.startsWith('{{')) {
@@ -21,7 +21,7 @@ function parseChildren(context, parentTag) {
     } else if (s[0] === '<') {
       // 解析tag
       if (/[a-z]/i.test(s[1])) {
-        node = parseElement(context)
+        node = parseElement(context, ancestors)
       }
     }
 
@@ -34,9 +34,15 @@ function parseChildren(context, parentTag) {
 }
 
 // 解析是否结束(结束条件：source有值，且标签闭合)
-function isEnd(context, parentTag) {
+function isEnd(context, ancestors) {
   const s = context.source
-  if (s.startsWith(`</${parentTag}>`)) {
+  if (s.startsWith('</')) {
+    for (let i = ancestors.length - 1; i >= 0; i--) {
+      const tag = ancestors[i].tag
+      if (s.slice(2, 2 + tag.length) === tag) {
+        return true
+      }
+    }
     return true
   }
   return !s
@@ -67,11 +73,17 @@ function parseText(context) {
 }
 
 // 解析element
-function parseElement(context) {
+function parseElement(context, ancestors) {
   const element: any = parseTag(context, TagType.Start)
+  ancestors.push(element)
   // tag内的内容放置在childrnen属性身上
-  element.children = parseChildren(context, element.tag)
-  parseTag(context, TagType.End)
+  element.children = parseChildren(context, ancestors)
+  ancestors.pop()
+  if (context.source.slice(2, 2 + element.tag.length) === element.tag) {
+    parseTag(context, TagType.End)
+  } else {
+    throw new Error(`缺少结束标签:${element.tag}`)
+  }
 
   return element
 }
@@ -129,7 +141,7 @@ function parseInterpolation(context) {
 
 /**
  *
- * @param context 插值表达式的内容
+ * @param context 上下文内容
  * @param length 推进的长度
  */
 function advanceBy(context, length) {
