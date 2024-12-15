@@ -7,38 +7,58 @@ const enum TagType {
 
 export function baseParse(content) {
   const context = createParserContext(content)
-  return createRoot(parseChildren(context))
+  return createRoot(parseChildren(context, ''))
 }
 
-function parseChildren(context) {
+function parseChildren(context, parentTag) {
   const nodes: any[] = []
-  let node
-  const s = context.source
-  if (s.startsWith('{{')) {
-    // 解析插值表达式
-    node = parseInterpolation(context)
-  } else if (s[0] === '<') {
-    // 解析tag
-    if (/[a-z]/i.test(s[1])) {
-      node = parseElement(context)
+  while (!isEnd(context, parentTag)) {
+    let node
+    const s = context.source
+    if (s.startsWith('{{')) {
+      // 解析插值表达式
+      node = parseInterpolation(context)
+    } else if (s[0] === '<') {
+      // 解析tag
+      if (/[a-z]/i.test(s[1])) {
+        node = parseElement(context)
+      }
     }
-  }
 
-  if (!node) {
-    node = parseText(context)
+    if (!node) {
+      node = parseText(context)
+    }
+    nodes.push(node)
   }
-  nodes.push(node)
   return nodes
 }
 
+// 解析是否结束(结束条件：source有值，且标签闭合)
+function isEnd(context, parentTag) {
+  const s = context.source
+  if (s.startsWith(`</${parentTag}>`)) {
+    return true
+  }
+  return !s
+}
+
 // 解析文本
+// 1. 纯文本
+// 2. <p>text</p>
+// 3. <div>text, {{message}}</div>
 function parseText(context) {
-  const content = context.source.slice(0, context.source.length)
-  console.log('content', content)
+  // 截取文本内容的时候，可能会遇到和{{}}或者tag混用的情况，此时就不能直接截取到底
+  let endIndex = context.source.length
+  const endTokens = ['{{', '<']
+  for (let i = 0; i < endTokens.length; i++) {
+    const token = endTokens[i]
+    const index = context.source.indexOf(token)
+    if (index !== -1 && endIndex > index) endIndex = index
+  }
+  const content = context.source.slice(0, endIndex)
 
   // 推进
-  advanceBy(context, context.source.length)
-  console.log('content', context.source)
+  advanceBy(context, endIndex)
 
   return {
     type: NodeTypes.TEXT,
@@ -48,8 +68,11 @@ function parseText(context) {
 
 // 解析element
 function parseElement(context) {
-  const element = parseTag(context, TagType.Start)
+  const element: any = parseTag(context, TagType.Start)
+  // tag内的内容放置在childrnen属性身上
+  element.children = parseChildren(context, element.tag)
   parseTag(context, TagType.End)
+
   return element
 }
 
@@ -58,7 +81,10 @@ function parseTag(context, type) {
   const match: any = /^<\/?([a-z]*)/i.exec(context.source)
 
   const tag = match[1]
+  // 移动之后的结果，返回<div></div>中的第一个div,返回除去第一个<div>之后的内容
+  // <div></div> -> ></div>
   advanceBy(context, match[0].length)
+  // </div>
   advanceBy(context, 1)
 
   if (type === TagType.End) return

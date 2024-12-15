@@ -15,26 +15,77 @@ describe('Parse', () => {
       })
     })
   })
-})
 
-describe('element', () => {
-  test('simple element', () => {
-    const ast = baseParse('<div></div>')
+  describe('element', () => {
+    test('simple element', () => {
+      const ast = baseParse('<div></div>')
+
+      expect(ast.children[0]).toStrictEqual({
+        type: NodeTypes.ELEMENT,
+        tag: 'div',
+        children: [],
+      })
+    })
+  })
+
+  describe('text', () => {
+    test('simple text', () => {
+      const ast = baseParse('text  msg')
+
+      expect(ast.children[0]).toStrictEqual({
+        type: NodeTypes.TEXT,
+        content: 'text  msg',
+      })
+    })
+  })
+
+  test('hello world', () => {
+    const ast = baseParse('<p>hi,{{message}}</p>')
+
+    expect(ast.children[0]).toStrictEqual({
+      type: NodeTypes.ELEMENT,
+      tag: 'p',
+      children: [
+        {
+          type: NodeTypes.TEXT,
+          content: 'hi,',
+        },
+        {
+          type: NodeTypes.INTERPOLATION,
+          content: {
+            type: NodeTypes.SIMPLE_EXPRESSION,
+            content: 'message',
+          },
+        },
+      ],
+    })
+  })
+
+  test.only('hello world', () => {
+    const ast = baseParse('<div><p>hi</p>{{message}}</div>')
 
     expect(ast.children[0]).toStrictEqual({
       type: NodeTypes.ELEMENT,
       tag: 'div',
-    })
-  })
-})
-
-describe('text', () => {
-  test('simple text', () => {
-    const ast = baseParse('text  msg')
-
-    expect(ast.children[0]).toStrictEqual({
-      type: NodeTypes.TEXT,
-      content: 'text  msg',
+      children: [
+        {
+          type: NodeTypes.ELEMENT,
+          tag: 'p',
+          children: [
+            {
+              type: NodeTypes.TEXT,
+              content: 'hi',
+            },
+          ],
+        },
+        {
+          type: NodeTypes.INTERPOLATION,
+          content: {
+            type: NodeTypes.SIMPLE_EXPRESSION,
+            content: 'message',
+          },
+        },
+      ],
     })
   })
 })
