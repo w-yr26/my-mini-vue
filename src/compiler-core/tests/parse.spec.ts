@@ -94,4 +94,15 @@ describe('Parse', () => {
       baseParse('<div><span></div>')
     }).toThrow('缺少结束标签:span')
   })
+
+  test('double', () => {
+    const ast = baseParse('<div></div>{{message}}')
+    expect(ast.children[1]).toStrictEqual({
+      type: NodeTypes.INTERPOLATION,
+      content: {
+        type: NodeTypes.SIMPLE_EXPRESSION,
+        content: 'message',
+      },
+    })
+  })
 })
