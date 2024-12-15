@@ -39,7 +39,8 @@ function isEnd(context, ancestors) {
   if (s.startsWith('</')) {
     for (let i = ancestors.length - 1; i >= 0; i--) {
       const tag = ancestors[i].tag
-      if (s.slice(2, 2 + tag.length) === tag) {
+
+      if (startsWithEndTagOpen(s, tag)) {
         return true
       }
     }
@@ -79,13 +80,21 @@ function parseElement(context, ancestors) {
   // tag内的内容放置在childrnen属性身上
   element.children = parseChildren(context, ancestors)
   ancestors.pop()
-  if (context.source.slice(2, 2 + element.tag.length) === element.tag) {
+
+  if (startsWithEndTagOpen(context.source, element.tag)) {
     parseTag(context, TagType.End)
   } else {
     throw new Error(`缺少结束标签:${element.tag}`)
   }
 
   return element
+}
+
+function startsWithEndTagOpen(source, tag) {
+  return (
+    source.startsWith('</') &&
+    source.slice(2, 2 + tag.length).toLowerCase() === tag.toLowerCase()
+  )
 }
 
 // 解析出tag标签
