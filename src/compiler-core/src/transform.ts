@@ -1,8 +1,14 @@
-export function transform(root, options) {
+export function transform(root, options = {}) {
   // 创建上下文
   const context = createTransformContext(root, options)
   // 遍历 - 深搜
   traverseNode(root, context)
+
+  createCodegenNode(root)
+}
+
+function createCodegenNode(root) {
+  root.codegenNode = root.children[0]
 }
 
 function createTransformContext(root, options) {
