@@ -12,4 +12,11 @@ describe('codegen', () => {
     // 如果前后不一致，说明出现了bug；当然，有时候是有意的更新
     expect(code).toMatchSnapshot()
   })
+
+  test('interpolation', () => {
+    const ast = baseParse('{{message}}')
+    transform(ast)
+    const { code } = generate(ast)
+    expect(code).toMatchSnapshot()
+  })
 })

@@ -1,6 +1,14 @@
 export function generate(ast) {
   const context = createCodegenContext()
 
+  const VueBinging = 'Vue'
+  const helpers = ['toDisplayString']
+  const aliasHelper = (s) => `${s}: _${s}`
+  context.push(
+    `const { ${helpers.map(aliasHelper).join(', ')} } = ${VueBinging}`
+  )
+  context.push('\n')
+
   context.push('return ')
   const functionName = 'render'
   const args = ['_ctx', '_cache']
