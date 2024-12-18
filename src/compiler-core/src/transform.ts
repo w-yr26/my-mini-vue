@@ -1,3 +1,6 @@
+import { NodeTypes } from './ast'
+
+// ast:传入的初始ast树
 export function transform(root, options = {}) {
   // 创建上下文
   const context = createTransformContext(root, options)
@@ -5,6 +8,8 @@ export function transform(root, options = {}) {
   traverseNode(root, context)
 
   createCodegenNode(root)
+
+  root.helpers = [...context.helpers.keys()]
 }
 
 function createCodegenNode(root) {
@@ -12,10 +17,15 @@ function createCodegenNode(root) {
 }
 
 function createTransformContext(root, options) {
-  return {
+  const context = {
     root,
     nodeTransforms: options.nodeTransforms || [],
+    helpers: new Map(),
+    helper(key) {
+      context.helpers.set(key, 1)
+    },
   }
+  return context
 }
 
 function traverseNode(node, context) {
@@ -28,6 +38,21 @@ function traverseNode(node, context) {
     transform(node)
   }
 
+  switch (node.type) {
+    case NodeTypes.INTERPOLATION:
+      context.helper('toDisplayString')
+      break
+    case NodeTypes.ROOT:
+    case NodeTypes.ELEMENT:
+      traverseChildren(node, context)
+
+    default:
+      break
+  }
+}
+
+function traverseChildren(node, context) {
+  const children = node.children
   if (children) {
     for (let i = 0; i < children.length; i++) {
       const child = children[i]
