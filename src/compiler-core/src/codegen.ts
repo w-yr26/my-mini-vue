@@ -1,3 +1,4 @@
+import { isString } from '../../shared/index'
 import { NodeTypes } from './ast'
 
 export function generate(ast) {
@@ -13,7 +14,7 @@ export function generate(ast) {
 
   context.push(`function ${functionName}(${signature}){`)
   context.push('return ')
-  getNode(ast.codegenNode, context)
+  genNode(ast.codegenNode, context)
   context.push('}')
   return {
     code: context.code,
@@ -22,15 +23,15 @@ export function generate(ast) {
 
 function genFunctionPreamble(context, ast) {
   const { push } = context
-  if (context.type === NodeTypes.INTERPOLATION) {
-    const VueBinging = 'Vue'
-    const aliasHelper = (s) => `${s}: _${s}`
+  const VueBinging = 'Vue'
+  const aliasHelper = (s) => `${s}: _${s}`
+  if (ast.helpers.length > 0) {
     push(`const { ${ast.helpers.map(aliasHelper).join(', ')} } = ${VueBinging}`)
   }
   push('\n')
 }
 
-function getNode(node, context) {
+function genNode(node, context) {
   switch (node.type) {
     case NodeTypes.TEXT:
       getText(node, context)
@@ -40,6 +41,15 @@ function getNode(node, context) {
       break
     case NodeTypes.SIMPLE_EXPRESSION:
       getExpression(node, context)
+      break
+    case NodeTypes.ELEMENT:
+      getELement(node, context)
+      break
+    case NodeTypes.COMPOUND_EXPRESSION:
+      getCompoundExpression(node, context)
+      break
+    case NodeTypes.TEXT:
+      genText(node, context)
       break
     default:
       break
@@ -56,7 +66,7 @@ function getText(node, context) {
 function getInterpolation(node, context) {
   const { push } = context
   push('_toDisplayString(')
-  getNode(node.content, context)
+  genNode(node.content, context)
   push(')')
 }
 
@@ -64,6 +74,41 @@ function getInterpolation(node, context) {
 function getExpression(node, context) {
   const { push } = context
   push(`${node.content}`)
+}
+
+// 获取Element
+function getELement(node, context) {
+  const { push } = context
+  const { tag, children } = node
+  // element内如果包裹着值，就在children字段中
+  push(`(createElementVNode("${tag}"), null,`)
+
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i]
+    genNode(child, context)
+  }
+  push(')')
+}
+
+// 获取复合类型
+function getCompoundExpression(node, context) {
+  const { push } = context
+  const children = node.children
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i]
+    if (isString(child)) {
+      push(child)
+    } else {
+      genNode(child, context)
+    }
+  }
+}
+
+function genText(node: any, context: any) {
+  // Implement
+  const { push } = context
+
+  push(`'${node.content}'`)
 }
 
 function createCodegenContext() {

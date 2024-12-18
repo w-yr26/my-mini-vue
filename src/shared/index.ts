@@ -7,6 +7,8 @@ export const isObject = (value) => {
   return value !== null && typeof value === 'object'
 }
 
+export const isString = (value) => typeof value === 'string'
+
 /**
  * 判断某个值是否发生改变
  * @param oldValue 旧值
