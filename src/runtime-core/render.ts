@@ -267,11 +267,6 @@ export function createRenderer(options) {
           // 由于newIndexToOldIndexMap[] = 0意味着vnode在老的中不存在，为了避免i=0，所以统一+1，反正后续进行最长递增子序列算法的时候也只是要得到对应的下标
           newIndexToOldIndexMap[newIndex - s2] = t + 1
           // 旧的节点在新的children中找得到 -> 深度对比，对比完还要移动更新渲染位置(怎么理解深度对比的时候还是调用patch？因为进入patch之后，后续根据条件判断，最终会走到patchElement而不再是mountElement)
-          // 那么为什么此处已经执行了patch，后面在LIS的时候还要再度执行hostInsert？patch内部走到最后不是会执行hostSetElementText吗？这样不会导致重复创建child吗？
-          // 首先，patch -> patchElement -> patchChildren 内确实存在执行 hostSetElementText 的情况，但是对于新旧节点文本内容一致的情况，并不会走该分支
-          // 其次，hostInsert 是将元素插入文档、，不是创建创建元素，别搞混了！
-          // 再者，要知道为什么要是有LIS？是对于有些节点，它在新旧vnodes中并没有发生改变，但是它的顺序发生了改变，此时没必要暴力删除重建，而是可以通过移动实现未发生变化的vnode的复用
-          // 而移动到哪？怎么移，就需要使用LIS
           if (newIndex > maxNewIndexSoFar) {
             maxNewIndexSoFar = newIndex
           } else {
