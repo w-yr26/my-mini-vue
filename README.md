@@ -66,4 +66,36 @@
 
 ## runtime-core 更新流程
 
-![whiteboard_exported_image (1)](https://github.com/user-attachments/assets/6998a496-74da-41d8-8e92-0081a5390816)
+![whiteboard_exported_image (2)](https://github.com/user-attachments/assets/259cd260-6a92-4a6d-b227-d4c634e38ccd)
+
+**Q&A**: 视图创建如何知道需要进行更新？
+
+也就是组件内的响应式数据发生改变之后，怎么通知组件这一个“依赖”重新执行？答案是`reactivity`模块的`effect`将组件的`render()`收集到`Dep`中，后续响应式数据发生变化，才会执行`Dep`通知依赖更新的逻辑
+
+```vue
+  // 示例代码
+  function setupRenderEffect(instance, vnode, container) {
+    effect(() => {
+      if (!instance.isMounted) {
+        // init
+        const { proxy } = instance
+        const subTree = (instance.subTree = instance.render.call(proxy))
+        patch(null, subTree, container, instance)
+
+        vnode.el = subTree.el
+
+        instance.isMounted = true
+      } else {
+        // update
+        const { proxy } = instance
+        const subTree = instance.render.call(proxy)
+        const preSubTree = instance.subTree
+        // 更新组件实例身上的subTree -> 应该放当前的
+        instance.subTree = subTree
+
+        patch(preSubTree, subTree, container, instance)
+      }
+    })
+  }
+```
+此处并未涉及异步更新的概念，异步更新可通过`effect()`的返回值 + `scheduler`调度器实现
