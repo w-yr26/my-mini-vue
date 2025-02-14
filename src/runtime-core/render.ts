@@ -360,12 +360,12 @@ export function createRenderer(options) {
     if (!n1) {
       mountComponent(n2, container, parentComponent, anchor)
     } else {
-      updateComponent(n1, n2)
+      patchComponent(n1, n2)
     }
   }
 
   // 更新组件 -> 更新组件的props、重新执行组件的render() ->进而触发更新element
-  function updateComponent(n1, n2) {
+  function patchComponent(n1, n2) {
     // if (shouldUpdate(n1, n2)) {
     //   const instance = (n2.component = n1.component)
     //   instance.next = n2
