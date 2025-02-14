@@ -13,25 +13,31 @@
 
 - readonly、shallowReadonly、isReactive、isReadOnly、isProxy
 - isRef、proxyRefs(ref解包)
-- computed
+- computed(内部维护一个脏标记，当响应式数据变化，执行`scheduler`改变脏标记为`true`，下次再次访问时重新计算)
 
 **runtime-core模块：**
 
-- render -> path -> processFragment、processText、processComponent、processElement -> mountElement/patchElement
+- render -> path -> processFragment、processText、processComponent、processElement -> mountElement(挂载)/patchElement(更新)
   
   - mountElement -> mountChildren、hostPatchProp、hostInsert
-  - patchElement -> patchProps、patchChildren -> TextToText、TextToArray、ArrayToText、ArrayToArray(diff:左侧对比、右侧对比、中间乱序部分使用最长递增子序列求出稳定部分 -> 删除、移动、新增)
+  - patchElement -> patchProps、patchChildren -> TextToText、TextToArray、ArrayToText、ArrayToArray(diff:左侧对比、右侧对比、中间乱序部分使用最长递增子序列求出稳定部分`patchKeyedChildren` -> 删除、移动、新增)
 
-- processComponent -> mountComponent/updateComponent -> setupComponent(处理组件setup部分)、setupRenderEffect(处理组件render部分) -> 接收组件`render()`返回值递归调用patch() -> 组件不断“开箱”操作，最终回到processElement
+- processComponent -> mountComponent(挂载)/patchComponent(更新) -> setupComponent(处理组件setup部分)、setupRenderEffect(处理组件render部分) -> 接收组件`render()`返回值**递归**调用patch() -> 组件不断“开箱”操作，最终回到processElement
 
 - reactivity的effect将组件render()作为**依赖**进行收集并监听，实现响应式数据更新 -> 触发依赖更新 -> 触发视图更新
 
-- 借助effect返回值以及Options调度器，将更新逻辑通过`Promise.then()`放置在异步更新队列中，实现`nextTick`
+- 借助effect返回值以及Options传入调度器，将更新逻辑通过`Promise.then()`放置在异步更新队列中，实现`nextTick`
 
   > 注意：Vue2和Vue3`nextTick`实现的区别：在Vue2中会通过降级处理将更新操作放置在异步队列中；但Vue3中是直接使用Promise.then()。因为Vue3的响应式使用Proxy本身就存在一定的兼容性，可以支持Proxy也就意味着浏览器版本足够支持Promise.then()
 
 - 父子组件之间的通信：props、emit
-- 祖孙组件之间的通信：provide、inject(原型链)
+- 祖孙组件之间的通信：provide、inject(寄生式继承)
+
+  > 为什么一定是寄生式继承？不能是原型链继承、构造函数继承、`extend`继承？
+  > 1. 原型链继承会污染原型链，子组件provide的修改可能会改变父组件的provide
+  > 2. 构造函数继承：需要显式调用父类构造函数，且父组件provide的修改无法实时响应给子组件
+  > 3. extend：通常是进行复制实现的继承，创建独立的副本，内存开销大、无法基于原型链查找、无法实时响应给子组件
+  > 4. Object.create()：轻量操作，不会复制父对象的属性，只是共享，可以实现父组件的provide改变实时响应给子组件，性能和内存占用上有较大优势；子组件provide的修改可以覆盖父组件但不会修改父组件已有的provide(符合provide-inject的功能)
 - 默认插槽、具名插槽、作用域插槽(维护一张表进行查找获取)
 
 **runtime-dom模块：**
