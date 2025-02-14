@@ -72,31 +72,117 @@
 
 ## runtime-core 更新流程
 
-![whiteboard_exported_image (1)](https://github.com/user-attachments/assets/6998a496-74da-41d8-8e92-0081a5390816)
+![whiteboard_exported_image (2)](https://github.com/user-attachments/assets/259cd260-6a92-4a6d-b227-d4c634e38ccd)
 
-### diff算法
-两侧对比(先左侧再右侧)，得到中间乱序部分
-1. 左侧对比：
-  根据`type`和`key`判断当前newVNode和oldVNode是否相同，是就指针往后走；反之指针跳转至右侧
-2. 右侧对比：
-  根据`type`和`key`判断当前newVNode和oldVNode是否相同，是就指针往前走；反之进入中间乱序比较
-3. 中间比较(暂定旧的中间乱序部分是`oldChildren`，新的中间乱序部分是`newChildren`)
-  遍历`newChildren`，维护一张`keyToNewIndexMap`映射表，根据`key`快速查找`VNode`在`newChildren`中的位置
-  遍历`oldChildren`，如果在`keyToNewIndexMap`查找得到，说明是新旧都存在，先递归调用patch()更新内容(后续需要移动位置)；如果查找不到，说明需要**删除**
-  创建`newIndexToOldIndexMap`(一个数组，长度为乱序部分的长度，初始值为-1)用于记录乱序部分新的`VNode`在旧的中的下标索引，执行最长递增子序列算法，求出`increaingIndexSequence`变化前后相对位置不变的部分
-  从后往前遍历新的中间乱序部分，如果当前`increaingIndexSequence`有值且不为-1，说明变化前后是稳定的部分，不处理；如果不在`increaingIndexSequence`内，则进行**移动**；如果`increaingIndexSequence`有值但是等于-1，说明是新的才存在，需要**新增**
+**Q&A**: 视图创建如何知道需要进行更新？
 
-  ### key值的作用：
-  在mini-vue的实现中，我们根据type和key判断是否属于同一元素，是否可以不要key只要type？
+也就是组件内的响应式数据发生改变之后，怎么通知组件这一个“依赖”重新执行？答案是`reactivity`模块的`effect`将组件的`render()`收集到`Dep`中，后续响应式数据发生变化，才会执行`Dep`通知依赖更新的逻辑
 
-  结合到具体的开发场景中，一般我们不会去修改元素的标签类型，而是修改内容，所以我们假设新旧vnodes的标签类型都是一致的
+```vue
+  // 示例代码
+  function setupRenderEffect(instance, vnode, container) {
+    effect(() => {
+      if (!instance.isMounted) {
+        // init
+        const { proxy } = instance
+        const subTree = (instance.subTree = instance.render.call(proxy))
+        patch(null, subTree, container, instance)
 
-  假设新旧分别为
+        vnode.el = subTree.el
 
-  旧：A、B
+        instance.isMounted = true
+      } else {
+        // update
+        const { proxy } = instance
+        const subTree = instance.render.call(proxy)
+        const preSubTree = instance.subTree
+        // 更新组件实例身上的subTree -> 应该放当前的
+        instance.subTree = subTree
 
-  新：B、A
+        patch(preSubTree, subTree, container, instance)
+      }
+    })
+  }
+```
+此处并未涉及异步更新的概念，异步更新可通过`effect()`的返回值 + `scheduler`调度器实现
 
-  如果没有key，左侧对比过程中，由于标签类型一致，就会认为是同一元素，那么进入patch后，A→B，B→A，但是你会发现它们就是位置不一样而已，完全没必要两个都执行替换(如果是右侧对比，道理一致)
+```vue
+  // 示例代码
+  function setupRenderEffect(instance, vnode, container, anchor) {
+    instance.update = effect(
+      () => {
+        if (!instance.isMounted) {
+          // init
+          const { proxy } = instance
+          const subTree = (instance.subTree = instance.render.call(proxy))
+          patch(null, subTree, container, instance, anchor)
 
-  另外，在**中间乱序对比**的过程中，我们需要使用key建立映射表用于快速查找元素，如果没有key就会进行二次循环，提高了时间复杂度
+          vnode.el = subTree.el
+
+          instance.isMounted = true
+        } else {
+          console.log('exe')
+
+          // 组件的更新逻辑是借助effect的返回值触发执行的
+          // effect返回一个runner，当调用runner的时候，就可以再次执行传给effect的函数，当更新组件的时候调用runner，就能跳转到这里执行
+          // console.log('update Component')
+
+          // 更新组件的props,next是新的vnode，vnode是老的vnode
+          const { next, vnode } = instance
+          if (next) {
+            next.el = vnode.el
+            updateComponentPreRender(instance, next)
+          }
+
+          // 重新执行组件文件的render()方法
+          const { proxy } = instance
+          const subTree = instance.render.call(proxy)
+          const preSubTree = instance.subTree
+          // 更新组件实例身上的subTree -> 应该放当前的
+          instance.subTree = subTree
+
+          patch(preSubTree, subTree, container, instance, anchor)
+        }
+      },
+      {
+        scheduler: () => {
+          console.log('exe scheduler')
+          queueJobs(instance.update)
+        },
+      }
+    )
+  }
+
+  // scheduler.ts
+  const queue: any[] = []
+  const activePreFlushCbs: any[] = []
+  let isFlushPending = false
+
+  // Vue3中，nextTick 是通过 Promise.then() 存入**微任务队列**，不再像 Vue2 一样进行降级处理
+  export function nextTick(fn?) {
+    return fn ? Promise.resolve().then(fn) : Promise.resolve()
+  }
+
+  function queueJobs() {
+    // 更新任务加入队列
+    if (!queue.includes(job)) {
+      queue.push(job)
+    }
+  
+    // 微任务队列中处理更新任务
+    queueFlush()
+  }
+
+  function queueFlush() {
+    if (isFlushPending) return
+    isFlushPending = true
+    nextTick(() => {
+      isFlushPending = false
+  
+      let job
+      while ((job = queue.shift())) {
+        job && job()
+      }
+    })
+  }
+```
