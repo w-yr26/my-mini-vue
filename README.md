@@ -72,7 +72,8 @@
 
 ## runtime-core 更新流程
 
-![whiteboard_exported_image (2)](https://github.com/user-attachments/assets/259cd260-6a92-4a6d-b227-d4c634e38ccd)
+![whiteboard_exported_image (3)](https://github.com/user-attachments/assets/b0bac818-fefd-45b1-b855-9758950eed8a)
+
 
 **Q&A**: 视图创建如何知道需要进行更新？
 
@@ -186,3 +187,30 @@
     })
   }
 ```
+
+### diff算法
+两侧对比(先左侧再右侧)，得到中间乱序部分
+1. 左侧对比：
+  根据`type`和`key`判断当前newVNode和oldVNode是否相同，是就指针往后走；反之指针跳转至右侧
+2. 右侧对比：
+  根据`type`和`key`判断当前newVNode和oldVNode是否相同，是就指针往前走；反之进入中间乱序比较
+3. 中间比较(暂定旧的中间乱序部分是`oldChildren`，新的中间乱序部分是`newChildren`)
+  遍历`newChildren`，维护一张`keyToNewIndexMap`映射表，根据`key`快速查找`VNode`在`newChildren`中的位置
+  遍历`oldChildren`，如果在`keyToNewIndexMap`查找得到，说明是新旧都存在，先递归调用patch()更新内容(后续需要移动位置)；如果查找不到，说明需要**删除**
+  创建`newIndexToOldIndexMap`(一个数组，长度为乱序部分的长度，初始值为-1)用于记录乱序部分新的`VNode`在旧的中的下标索引，执行最长递增子序列算法，求出`increaingIndexSequence`变化前后相对位置不变的部分
+  从后往前遍历新的中间乱序部分，如果当前`increaingIndexSequence`有值且不为-1，说明变化前后是稳定的部分，不处理；如果不在`increaingIndexSequence`内，则进行**移动**；如果`increaingIndexSequence`有值但是等于-1，说明是新的才存在，需要**新增**
+
+  ### key值的作用：
+  在mini-vue的实现中，我们根据type和key判断是否属于同一元素，是否可以不要key只要type？
+
+  结合到具体的开发场景中，一般我们不会去修改元素的标签类型，而是修改内容，所以我们假设新旧vnodes的标签类型都是一致的
+
+  假设新旧分别为
+
+  旧：A、B
+
+  新：B、A
+
+  如果没有key，左侧对比过程中，由于标签类型一致，就会认为是同一元素，那么进入patch后，A→B，B→A，但是你会发现它们就是位置不一样而已，完全没必要两个都执行替换(如果是右侧对比，道理一致)
+
+  另外，在**中间乱序对比**的过程中，我们需要使用key建立映射表用于快速查找元素，如果没有key就会进行二次循环，提高了时间复杂度
